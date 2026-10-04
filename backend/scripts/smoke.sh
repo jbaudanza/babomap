@@ -16,6 +16,7 @@ echo "# post 2 points";        curl -sf -X POST "$BASE/api/locations" -H "$H" -H
 echo "# repost -> inserted 0"; curl -sf -X POST "$BASE/api/locations" -H "$H" -H "$J" \
   -d "{\"points\":[{\"recorded_at\":$now,\"lat\":37.5670,\"lon\":126.979}]}"; echo
 echo "# status";               curl -sf "$BASE/api/status" -H "$H"; echo
+echo "# ip recorded";          curl -sf "$BASE/api/status" -H "$H" | grep -q '"ip":"[^"]' && echo yes
 echo "# sharing off";          curl -sf -X PUT "$BASE/api/sharing" -H "$H" -H "$J" -d '{"enabled":false}'; echo
 echo "# sharing on";           curl -sf -X PUT "$BASE/api/sharing" -H "$H" -H "$J" -d '{"enabled":true}'; echo
 echo "# history (last 24h)";   curl -sf "$BASE/api/history" -H "$H"; echo

@@ -7,7 +7,7 @@ const MAX_ROWS = 5000;
 const DEFAULT_WINDOW_MS = 24 * 60 * 60_000;
 
 const stmt = db.prepare(
-  `SELECT l.recorded_at, l.received_at, l.lat, l.lon, l.accuracy, l.altitude, l.speed, l.heading, l.battery, l.source
+  `SELECT l.recorded_at, l.received_at, l.lat, l.lon, l.accuracy, l.altitude, l.speed, l.heading, l.battery, l.source, l.ip
    FROM locations l JOIN users u ON u.id = l.user_id
    WHERE u.name = ? AND l.recorded_at >= ? AND l.recorded_at < ?
    ORDER BY l.recorded_at ASC

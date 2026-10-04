@@ -11,6 +11,7 @@ export type LocationPoint = {
   heading: number | null;
   battery: number | null;
   source: string | null;
+  ip: string | null;
 };
 
 export type UserStatus = {
@@ -23,7 +24,7 @@ export type UserStatus = {
 type UserRow = { id: number; name: string; sharing_enabled: number; sharing_changed_at: number | null };
 
 const latestStmt = db.prepare(
-  `SELECT recorded_at, received_at, lat, lon, accuracy, altitude, speed, heading, battery, source
+  `SELECT recorded_at, received_at, lat, lon, accuracy, altitude, speed, heading, battery, source, ip
    FROM locations WHERE user_id = ? ORDER BY recorded_at DESC LIMIT 1`,
 );
 const usersStmt = db.prepare(

@@ -78,6 +78,7 @@ CREATE TABLE locations (
   heading      REAL,
   battery      REAL,               -- 0..1
   source       TEXT,               -- 'background' | 'foreground'
+  ip           TEXT,               -- client IP at upload time (weak "at home" signal)
   UNIQUE (user_id, recorded_at)    -- batch uploads are idempotent
 );
 

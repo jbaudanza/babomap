@@ -39,6 +39,12 @@ const migrations: string[] = [
     at       INTEGER NOT NULL
   );
   `,
+  // 2: client IP as seen by the server at upload time. Points that waited in
+  // the phone's offline queue get the IP of the reconnect, not of the fix.
+  // Useful as a weak "at home / at the office" signal when GPS is flaky.
+  `
+  ALTER TABLE locations ADD COLUMN ip TEXT;
+  `,
 ];
 
 export function migrate(db: Database.Database): void {

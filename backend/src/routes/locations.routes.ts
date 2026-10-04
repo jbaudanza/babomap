@@ -50,16 +50,16 @@ function parsePoint(raw: unknown): Incoming | string {
 
 const insert = db.prepare(
   `INSERT OR IGNORE INTO locations
-     (user_id, recorded_at, received_at, lat, lon, accuracy, altitude, speed, heading, battery, source)
-   VALUES (@user_id, @recorded_at, @received_at, @lat, @lon, @accuracy, @altitude, @speed, @heading, @battery, @source)`,
+     (user_id, recorded_at, received_at, lat, lon, accuracy, altitude, speed, heading, battery, source, ip)
+   VALUES (@user_id, @recorded_at, @received_at, @lat, @lon, @accuracy, @altitude, @speed, @heading, @battery, @source, @ip)`,
 );
 
-const insertBatch = db.transaction((userId: number, points: Incoming[], now: number) => {
+const insertBatch = db.transaction((userId: number, points: Incoming[], now: number, ip: string | null) => {
   let inserted = 0;
   for (const p of points) {
     // A device clock far in the future would otherwise pin "latest" forever.
     const recorded_at = p.recorded_at > now + MAX_FUTURE_MS ? now : p.recorded_at;
-    inserted += insert.run({ ...p, user_id: userId, recorded_at, received_at: now }).changes;
+    inserted += insert.run({ ...p, user_id: userId, recorded_at, received_at: now, ip }).changes;
   }
   return inserted;
 });
@@ -86,6 +86,7 @@ locationsRoutes.post("/", (req, res) => {
     }
     parsed.push(p);
   }
-  const inserted = insertBatch(req.user!.id, parsed, Date.now());
+  // req.ip honours X-Forwarded-For because of "trust proxy" (Fly sets it).
+  const inserted = insertBatch(req.user!.id, parsed, Date.now(), req.ip ?? null);
   res.json({ inserted, received: parsed.length });
 });

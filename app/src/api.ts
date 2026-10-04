@@ -13,7 +13,7 @@ export type OutgoingPoint = {
   source?: 'background' | 'foreground';
 };
 
-export type LocationPoint = Required<OutgoingPoint> & { received_at: number };
+export type LocationPoint = Required<OutgoingPoint> & { received_at: number; ip: string | null };
 
 export type UserStatus = {
   name: string;
