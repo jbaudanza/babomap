@@ -1,3 +1,4 @@
+import * as Updates from 'expo-updates';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { api } from '../api';
@@ -69,6 +70,36 @@ export function SettingsScreen({ creds, onClose, onSignOut }: Props) {
     }
   }
 
+  // Check -> download -> reload, in one tap. Normally expo-updates checks at
+  // launch and applies on the *next* launch, so a change needs two restarts.
+  async function checkForUpdates() {
+    if (!Updates.isEnabled) {
+      setMessage('Updates are disabled in this build (dev client?).');
+      return;
+    }
+    setBusy(true);
+    setMessage('Checking for updates…');
+    try {
+      const check = await Updates.checkForUpdateAsync();
+      if (!check.isAvailable) {
+        setMessage('Already up to date.');
+        return;
+      }
+      setMessage('Downloading update…');
+      const fetched = await Updates.fetchUpdateAsync();
+      if (!fetched.isNew) {
+        setMessage('Update downloaded but nothing new to apply.');
+        return;
+      }
+      setMessage('Restarting…');
+      await Updates.reloadAsync();
+    } catch (e) {
+      setMessage(`Update failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function flushNow() {
     setBusy(true);
     const r = await flush(creds);
@@ -134,6 +165,13 @@ export function SettingsScreen({ creds, onClose, onSignOut }: Props) {
       </View>
 
       <View style={styles.card}>
+        <Row label="App version" value={`${Updates.runtimeVersion ?? '?'} · ${updateLabel()}`} />
+        <Pressable onPress={() => void checkForUpdates()} disabled={busy}>
+          <Text style={styles.link}>Check for updates</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.card}>
         <Row label="Server" value={creds.url} />
         <Pressable onPress={forget}>
           <Text style={[styles.link, { color: '#C0392B' }]}>Forget this device</Text>
@@ -143,6 +181,12 @@ export function SettingsScreen({ creds, onClose, onSignOut }: Props) {
       {message && <Text style={styles.message}>{message}</Text>}
     </ScrollView>
   );
+}
+
+function updateLabel(): string {
+  if (Updates.isEmbeddedLaunch || !Updates.updateId) return 'built-in bundle';
+  const when = Updates.createdAt ? ` (${Updates.createdAt.toLocaleDateString()})` : '';
+  return `update ${Updates.updateId.slice(0, 8)}${when}`;
 }
 
 function Row({ label, value }: { label: string; value: string }) {
