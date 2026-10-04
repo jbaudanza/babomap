@@ -3,7 +3,7 @@ import { allStatuses } from "../status.js";
 
 export const statusRoutes = Router();
 
-// GET /api/status -> { users: [UserStatus] }
-statusRoutes.get("/", (_req, res) => {
-  res.json({ users: allStatuses() });
+// GET /api/status -> { me: name, users: [UserStatus] }
+statusRoutes.get("/", (req, res) => {
+  res.json({ me: req.user!.name, users: allStatuses() });
 });

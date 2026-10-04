@@ -16,8 +16,8 @@ In another shell: `TOKEN=<jon token> npm run smoke`.
 ## Tokens
 
 ```bash
-sh scripts/token.sh jon        # prints "jon:<hex>" and a QR code for the phone
-sh scripts/token.sh wife
+sh scripts/token.sh jon https://babomap.fly.dev   # prints "jon:<hex>" and the setup QR
+sh scripts/token.sh wife https://babomap.fly.dev
 ```
 
 `USER_TOKENS` is `name:token,name:token`. Rotate a token by regenerating it,
@@ -47,7 +47,7 @@ All `/api/*` routes need `Authorization: Bearer <token>` and JSON bodies.
 | Method | Path             | Body / query                 |
 |--------|------------------|------------------------------|
 | POST   | `/api/locations` | `{ points: [...] }` (≤ 1000) |
-| GET    | `/api/status`    | —                            |
+| GET    | `/api/status`    | — (returns `me` + `users`)   |
 | PUT    | `/api/sharing`   | `{ enabled: boolean }`       |
 | GET    | `/api/history`   | `?user=&from=&to=` (ms)      |
 | GET    | `/healthz`       | no auth                      |
