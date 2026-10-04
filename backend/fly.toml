@@ -1,0 +1,31 @@
+# fly launch --no-deploy --copy-config   (then: fly volumes create data --size 1)
+app = "babomap"
+primary_region = "sjc"
+
+[build]
+
+[env]
+  DATABASE_PATH = "/data/babomap.db"
+  PORT = "8080"
+
+[mounts]
+  source = "data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/healthz"
+
+# SQLite on a volume: never scale beyond one machine.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
