@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import * as Updates from 'expo-updates';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { COLORS } from './src/config';
@@ -19,6 +20,18 @@ export default function App() {
       setScreen(c ? 'map' : 'setup');
     });
   }, []);
+
+  // expo-updates checks and downloads on launch but only applies on the next
+  // *process* start. On Android the location foreground service keeps the
+  // process alive, so swiping the app away is not a restart and an update can
+  // sit downloaded indefinitely. Reload as soon as one is ready, as long as
+  // nobody is mid-setup.
+  const { isUpdatePending } = Updates.useUpdates();
+  useEffect(() => {
+    if (isUpdatePending && screen === 'map') {
+      void Updates.reloadAsync().catch((e) => console.warn('[babomap] reload failed', e));
+    }
+  }, [isUpdatePending, screen]);
 
   let body;
   if (screen === 'loading') {
