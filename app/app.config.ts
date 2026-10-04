@@ -8,9 +8,12 @@ if (!androidMapsKey) {
   console.warn('GOOGLE_MAPS_ANDROID_API_KEY is not set: Android map tiles will be blank.');
 }
 
+const EAS_PROJECT_ID = 'c6067f4a-a7f8-4eee-9670-8825fb4d1a37';
+
 const config: ExpoConfig = {
   name: 'BaboMap',
   slug: 'babomap',
+  owner: 'jbaudanza',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
@@ -56,10 +59,12 @@ const config: ExpoConfig = {
     'expo-dev-client',
     ['react-native-maps', { androidGoogleMapsApiKey: androidMapsKey }],
   ],
-  // EAS Update: `eas update:configure` adds `updates.url` and the EAS project
-  // id. Runtime version follows the app version, so a native change means
-  // bumping `version` and rebuilding; JS-only changes ship with `eas update`.
+  // EAS Update. Runtime version follows the app version, so a native change
+  // means bumping `version` and rebuilding; JS-only changes ship with
+  // `eas update --channel <channel>`.
   runtimeVersion: { policy: 'appVersion' },
+  updates: { url: `https://u.expo.dev/${EAS_PROJECT_ID}` },
+  extra: { eas: { projectId: EAS_PROJECT_ID } },
 };
 
 export default config;
