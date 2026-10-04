@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Circle, Marker } from 'react-native-maps';
 import { api, type StatusResponse, type UserStatus } from '../api';
 import { AVATARS, COLORS, FALLBACK_AVATARS, POLL_INTERVAL_MS, STALE_AFTER_MS } from '../config';
 import type { Credentials } from '../credentials';
@@ -9,6 +9,9 @@ import { flush } from '../queue';
 import { timeAgo } from '../timeAgo';
 
 type Props = { creds: Credentials; onOpenSettings: () => void };
+
+/** Below this radius the circle hides under the marker anyway. */
+const MIN_CIRCLE_M = 15;
 
 export function MapScreen({ creds, onOpenSettings }: Props) {
   const [status, setStatus] = useState<StatusResponse | null>(null);
@@ -74,6 +77,18 @@ export function MapScreen({ creds, onOpenSettings }: Props) {
   return (
     <View style={styles.root}>
       <MapView ref={mapRef} style={StyleSheet.absoluteFill} showsUserLocation={false}>
+        {status?.users.map((u) =>
+          u.latest?.accuracy != null && u.latest.accuracy > MIN_CIRCLE_M ? (
+            <Circle
+              key={`${u.name}-acc`}
+              center={{ latitude: u.latest.lat, longitude: u.latest.lon }}
+              radius={u.latest.accuracy}
+              strokeWidth={1}
+              strokeColor={u.sharing_enabled ? COLORS.pinkStroke : COLORS.staleStroke}
+              fillColor={u.sharing_enabled ? COLORS.pinkFill : COLORS.staleFill}
+            />
+          ) : null,
+        )}
         {status?.users.map((u, i) =>
           u.latest ? (
             <Marker

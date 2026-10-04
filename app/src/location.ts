@@ -72,6 +72,11 @@ async function batteryLevel(): Promise<number | null> {
   }
 }
 
+/** iOS uses -1 for "unknown" speed/heading. */
+function nonNegative(v: number | null): number | null {
+  return v !== null && v >= 0 ? v : null;
+}
+
 export function toPoint(
   l: Location.LocationObject,
   source: 'background' | 'foreground',
@@ -83,8 +88,8 @@ export function toPoint(
     lon: l.coords.longitude,
     accuracy: l.coords.accuracy,
     altitude: l.coords.altitude,
-    speed: l.coords.speed,
-    heading: l.coords.heading,
+    speed: nonNegative(l.coords.speed),
+    heading: nonNegative(l.coords.heading),
     battery,
     source,
   };
@@ -172,12 +177,17 @@ export async function reconcileOnLaunch(): Promise<void> {
   }
 }
 
-/** Foreground: grab one fix now and upload it, plus anything queued. */
+/**
+ * Foreground: grab one fix now and upload it, plus anything queued.
+ * High accuracy here, unlike the background task: on Android "Balanced"
+ * means wifi/cell only (~100 m), and this is a single read while someone is
+ * looking at the map, so GPS is worth it.
+ */
 export async function postForegroundFix(creds: Credentials): Promise<void> {
   if (!(await isSharingEnabled())) return;
   const p = await getPermissions();
   if (p.foreground !== 'granted') return;
-  const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
   const battery = await batteryLevel();
   await sendOrQueue(creds, [toPoint(loc, 'foreground', battery)]);
   await flush(creds);
