@@ -1,31 +1,34 @@
-# fly launch --no-deploy --copy-config   (then: fly volumes create data --size 1)
-app = "babomap"
-primary_region = "sjc"
+# fly.toml app configuration file generated for babomap on 2026-10-04T13:13:11+03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'babomap'
+primary_region = 'sjc'
 
 [build]
-
 [env]
-  DATABASE_PATH = "/data/babomap.db"
-  PORT = "8080"
+  DATABASE_PATH = '/data/babomap.db'
+  PORT = '8080'
 
-[mounts]
-  source = "data"
-  destination = "/data"
+[[mounts]]
+  source = 'data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
 
   [[http_service.checks]]
-    interval = "30s"
-    timeout = "5s"
-    method = "GET"
-    path = "/healthz"
+    interval = '30s'
+    timeout = '5s'
+    method = 'GET'
+    path = '/healthz'
 
-# SQLite on a volume: never scale beyond one machine.
+# SQLite on a volume: never scale beyond one machine (deploy with --ha=false).
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
+  size = 'shared-cpu-1x'
+  memory = '256mb'
