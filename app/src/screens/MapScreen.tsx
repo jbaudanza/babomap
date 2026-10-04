@@ -91,14 +91,12 @@ export function MapScreen({ creds, onOpenSettings }: Props) {
         )}
         {status?.users.map((u, i) =>
           u.latest ? (
-            <Marker
+            <UserMarker
               key={u.name}
-              coordinate={{ latitude: u.latest.lat, longitude: u.latest.lon }}
-              anchor={{ x: 0.5, y: 1 }}
-              tracksViewChanges={false}
-            >
-              <UserMarker user={u} avatar={AVATARS[u.name] ?? FALLBACK_AVATARS[i % FALLBACK_AVATARS.length]} now={now} />
-            </Marker>
+              user={u}
+              avatar={AVATARS[u.name] ?? FALLBACK_AVATARS[i % FALLBACK_AVATARS.length]}
+              now={now}
+            />
           ) : null,
         )}
       </MapView>
@@ -140,17 +138,36 @@ function UserMarker({ user, avatar, now }: { user: UserStatus; avatar: string; n
   const fix = user.latest!;
   const paused = !user.sharing_enabled;
   const stale = !paused && now - fix.recorded_at > STALE_AFTER_MS;
-  const caption = paused ? 'paused' : timeAgo(fix.recorded_at, now);
+  const caption = `${user.name} · ${paused ? 'paused' : timeAgo(fix.recorded_at, now)}`;
+  const dim = paused || stale;
+
+  // Android rasterises custom marker views into a bitmap. With
+  // tracksViewChanges=false the snapshot is taken immediately, often before
+  // layout and emoji fonts are ready (half-drawn bubbles, missing captions),
+  // and it is never retaken, so the time-ago text would never update.
+  // Track while the content changes, then freeze to keep the map cheap.
+  const [tracks, setTracks] = useState(true);
+  const contentKey = `${avatar}|${caption}|${dim}`;
+  useEffect(() => {
+    setTracks(true);
+    const t = setTimeout(() => setTracks(false), 800);
+    return () => clearTimeout(t);
+  }, [contentKey]);
+
   return (
-    <View style={styles.marker}>
-      <View style={[styles.bubble, (paused || stale) && styles.bubbleDim]}>
-        <Text style={styles.avatar}>{avatar}</Text>
+    <Marker
+      coordinate={{ latitude: fix.lat, longitude: fix.lon }}
+      anchor={{ x: 0.5, y: 1 }}
+      tracksViewChanges={tracks}
+    >
+      <View style={styles.marker} collapsable={false}>
+        <Text style={[styles.caption, dim && styles.captionDim]}>{caption}</Text>
+        <View style={[styles.bubble, dim && styles.bubbleDim]}>
+          <Text style={styles.avatar}>{avatar}</Text>
+        </View>
+        <View style={[styles.tail, dim && styles.tailDim]} />
       </View>
-      <View style={styles.tail} />
-      <Text style={[styles.caption, (paused || stale) && styles.captionDim]}>
-        {user.name} · {caption}
-      </Text>
-    </View>
+    </Marker>
   );
 }
 
@@ -189,7 +206,7 @@ const styles = StyleSheet.create({
   meSub: { fontSize: 12, color: COLORS.muted, marginTop: 2 },
   iconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.pinkSoft, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 20, color: COLORS.pink },
-  marker: { alignItems: 'center' },
+  marker: { alignItems: 'center', padding: 4 },
   bubble: {
     width: 44,
     height: 44,
@@ -214,7 +231,7 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   caption: {
-    marginTop: 2,
+    marginBottom: 3,
     fontSize: 11,
     fontWeight: '600',
     color: COLORS.ink,
@@ -225,4 +242,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   captionDim: { color: COLORS.muted },
+  tailDim: { borderTopColor: COLORS.stale },
 });
