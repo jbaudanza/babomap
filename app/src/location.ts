@@ -9,6 +9,10 @@ import { loadCredentials, type Credentials } from './credentials';
 import { flush, sendOrQueue } from './queue';
 
 const SHARING_KEY = 'babomap.sharing';
+// Bump when TASK_OPTIONS change: the OS task keeps the options it was started
+// with, so reconcileOnLaunch restarts it when this differs from what's stored.
+const TASK_OPTIONS_VERSION = 2;
+const TASK_VERSION_KEY = 'babomap.taskOptionsVersion';
 
 // --- Background task -------------------------------------------------------
 // Runs whenever the OS delivers fixes, including when the app is killed
@@ -39,13 +43,17 @@ TaskManager.defineTask<TaskData>(LOCATION_TASK, async ({ data, error }) => {
 
 const TASK_OPTIONS: Location.LocationTaskOptions = {
   accuracy: Location.Accuracy.Balanced,
-  // Report after moving this far...
-  distanceInterval: 50,
-  // ...or (Android only) after this long, even when stationary.
+  // Android: a fix every minute even when stationary (the heartbeat). Any
+  // distanceInterval > 0 becomes a min-displacement filter on the fused
+  // provider and silences a stationary phone entirely.
+  // iOS: distanceFilter; CoreLocation sends nothing while stationary, by design.
+  distanceInterval: Platform.OS === 'android' ? 0 : 50,
   timeInterval: 60_000,
-  // iOS: Expo buffers fixes and wakes the JS task at most this often.
+  // Expo buffers fixes while the app is backgrounded and only wakes the JS
+  // task once BOTH thresholds are met. A distance threshold therefore holds
+  // a stationary phone's fixes forever, so it must be 0.
   deferredUpdatesInterval: 60_000,
-  deferredUpdatesDistance: 100,
+  deferredUpdatesDistance: 0,
   // iOS: keep listening when stationary; otherwise CoreLocation sleeps and
   // only resumes on a significant-change event.
   pausesUpdatesAutomatically: false,
@@ -139,6 +147,11 @@ export async function isTaskRunning(): Promise<boolean> {
   }
 }
 
+async function startTask(): Promise<void> {
+  await Location.startLocationUpdatesAsync(LOCATION_TASK, TASK_OPTIONS);
+  await AsyncStorage.setItem(TASK_VERSION_KEY, String(TASK_OPTIONS_VERSION));
+}
+
 /** Turn sharing on: permissions, background task, local flag. Throws if denied. */
 export async function startSharing(): Promise<void> {
   const p = await requestPermissions();
@@ -150,7 +163,7 @@ export async function startSharing(): Promise<void> {
     );
   }
   if (!(await isTaskRunning())) {
-    await Location.startLocationUpdatesAsync(LOCATION_TASK, TASK_OPTIONS);
+    await startTask();
   }
   await setSharingFlag(true);
 }
@@ -164,14 +177,20 @@ export async function stopSharing(): Promise<void> {
 
 /**
  * On launch: if the switch is on but the OS task isn't registered (fresh
- * install from a backup, task cleared by the system), start it again.
+ * install from a backup, task cleared by the system), start it again. If it
+ * is running with stale options (shipped via EAS Update), restart it.
  */
 export async function reconcileOnLaunch(): Promise<void> {
   if (!(await isSharingEnabled())) return;
-  if (await isTaskRunning()) return;
+  const running = await isTaskRunning();
+  if (running) {
+    const v = await AsyncStorage.getItem(TASK_VERSION_KEY);
+    if (v === String(TASK_OPTIONS_VERSION)) return;
+    await Location.stopLocationUpdatesAsync(LOCATION_TASK);
+  }
   const p = await getPermissions();
   if (p.background === 'granted') {
-    await Location.startLocationUpdatesAsync(LOCATION_TASK, TASK_OPTIONS);
+    await startTask();
   } else {
     await setSharingFlag(false);
   }
