@@ -21,6 +21,9 @@ const config: ExpoConfig = {
   scheme: 'babomap',
   ios: {
     bundleIdentifier: 'org.jonb.babomap',
+    // Personal team (not hilokal). Prebuild writes this as DEVELOPMENT_TEAM
+    // for local `expo run:ios`; EAS uses it when choosing the Apple team.
+    appleTeamId: '4BCYW8N8Z8',
     supportsTablet: false,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
