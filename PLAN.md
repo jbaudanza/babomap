@@ -235,7 +235,7 @@ everything else ships via EAS Update.
 4. **Background task + offline queue.** Both platforms. Budget the most time
    here; test overnight on both phones.
 5. **Sharing toggle** and the paused state on the map.
-6. **Distribution.** EAS Update channel, TestFlight, APK; Litestream backup.
+6. **Distribution.** EAS Update channel, local iOS build, Android APK; Litestream backup.
 
 ## Later
 
