@@ -2,24 +2,31 @@
 
 Expo (SDK 57) + TypeScript. See `../PLAN.md` for the design.
 
-Background location does not work in Expo Go: use a development build.
+Background location does not work in Expo Go, so every build is a native build.
+
+- **iOS (Jon's phone):** built locally by Xcode with the personal Apple team.
+  No paid membership and no EAS Build involved.
+- **Android (wife's phone):** built by EAS Build as an APK and installed directly.
+- **JS-only changes** ship to both with EAS Update.
 
 ```bash
 npm install
 cp .env.example .env               # Android Google Maps key (iOS needs none)
 npx expo-doctor && npx tsc --noEmit
 
-# one-time EAS setup (needs an Expo account)
-npx eas-cli init                   # writes the project id into app.config.ts extra
-npx eas-cli update:configure       # adds updates.url
+# iOS: phone plugged in, release build installed directly
+npm run ios:device
 
-# builds
-npx eas-cli build --profile development --platform ios      # dev client, TestFlight/internal
-npx eas-cli build --profile preview --platform android      # APK to install directly
+# Android: APK from EAS Build (needs the Maps key in the EAS environment)
+npx eas-cli build --profile production --platform android
 
-# ship JS-only changes
+# ship JS-only changes to both phones
 npx eas-cli update --channel production --message "..."
 ```
+
+If Xcode complains about signing on the first iOS build, open `ios/BaboMap.xcworkspace`
+once (after `npx expo prebuild -p ios`) and sign in with the Apple ID under
+Signing & Capabilities. The team is pinned to `4BCYW8N8Z8` in `app.config.ts`.
 
 ## Layout
 

@@ -66,7 +66,12 @@ const config: ExpoConfig = {
   // means bumping `version` and rebuilding; JS-only changes ship with
   // `eas update --channel <channel>`.
   runtimeVersion: { policy: 'appVersion' },
-  updates: { url: `https://u.expo.dev/${EAS_PROJECT_ID}` },
+  updates: {
+    url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+    // Local Xcode builds (`npm run ios:device`) don't go through EAS Build,
+    // which is what normally stamps the update channel into the binary.
+    requestHeaders: { 'expo-channel-name': 'production' },
+  },
   extra: { eas: { projectId: EAS_PROJECT_ID } },
 };
 

@@ -217,11 +217,13 @@ everything else ships via EAS Update.
 
 ### App
 
-- EAS project with `preview` (internal) and `production` profiles.
-- Android: `eas build -p android --profile preview` → APK installed directly.
-- iOS: Apple Developer Program required; distribute via TestFlight internal
-  testing. (Free-account sideloads expire weekly — not viable.)
-- `eas update --channel production` for JS-only changes.
+- iOS: local Xcode build onto the one iPhone (`npm run ios:device`). The
+  personal Apple team has no active paid membership, which rules out EAS
+  Build and TestFlight for iOS but is fine for Xcode's development signing.
+- Android: `eas build --profile production --platform android` → APK installed
+  directly on the one Android phone.
+- `eas update --channel production` for JS-only changes on both. Local iOS
+  builds get the channel from `updates.requestHeaders` in `app.config.ts`.
 
 ## Order of work
 
