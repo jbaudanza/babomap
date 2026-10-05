@@ -11,7 +11,7 @@ import { flush, sendOrQueue } from './queue';
 const SHARING_KEY = 'babomap.sharing';
 // Bump when TASK_OPTIONS change: the OS task keeps the options it was started
 // with, so reconcileOnLaunch restarts it when this differs from what's stored.
-const TASK_OPTIONS_VERSION = 3;
+const TASK_OPTIONS_VERSION = 4;
 const TASK_VERSION_KEY = 'babomap.taskOptionsVersion';
 
 // --- Background task -------------------------------------------------------
@@ -37,7 +37,24 @@ TaskManager.defineTask<TaskData>(LOCATION_TASK, async ({ data, error }) => {
   } catch (e) {
     console.warn('[babomap] background upload failed', e);
   }
+  await resumeIfPaused();
 });
+
+/**
+ * iOS pauses standard updates when stationary and never resumes them on its
+ * own. startLocationUpdatesAsync is idempotent and re-issues the native
+ * start call, which is exactly the resume Apple expects the app to do.
+ * No-op on Android (nothing pauses there) and when sharing is off.
+ */
+async function resumeIfPaused(): Promise<void> {
+  if (Platform.OS !== 'ios') return;
+  try {
+    if (!(await isSharingEnabled())) return;
+    await Location.startLocationUpdatesAsync(LOCATION_TASK, TASK_OPTIONS);
+  } catch (e) {
+    console.warn('[babomap] resume failed', e);
+  }
+}
 
 // --- Options ---------------------------------------------------------------
 
@@ -46,8 +63,7 @@ const TASK_OPTIONS: Location.LocationTaskOptions = {
   // fixes were 20-100 m unless another app had GPS running; iOS's
   // hundred-metre target is a soft budget that depends on what else is
   // running. Both are movement-only (below), so GPS sleeps when the phone
-  // does. iOS: with pausesUpdatesAutomatically off, GPS stays on whenever
-  // updates are active -- watch battery.
+  // does.
   accuracy: Location.Accuracy.High,
   // Movement-only: a fix after moving this far, nothing while stationary.
   // There is deliberately no heartbeat; "is the task alive?" is answered by
@@ -60,9 +76,13 @@ const TASK_OPTIONS: Location.LocationTaskOptions = {
   // or fixes sit in the buffer until the phone has travelled that far.
   deferredUpdatesInterval: 60_000,
   deferredUpdatesDistance: 0,
-  // iOS: keep listening when stationary; otherwise CoreLocation sleeps and
-  // only resumes on a significant-change event.
-  pausesUpdatesAutomatically: false,
+  // iOS: let CoreLocation power GPS down when the phone is stationary.
+  // iOS never resumes standard updates by itself after a pause, but Expo
+  // also runs significant-change monitoring (not pausable, survives app
+  // termination), which wakes the task with a coarse fix once the phone
+  // has moved a few hundred metres; the task then calls resumeIfPaused()
+  // to restart standard updates. Cost: one coarse point per trip start.
+  pausesUpdatesAutomatically: true,
   activityType: Location.ActivityType.Other,
   showsBackgroundLocationIndicator: false,
   // Android: a foreground service keeps the process alive and is required
@@ -191,7 +211,10 @@ export async function reconcileOnLaunch(): Promise<void> {
   const running = await isTaskRunning();
   if (running) {
     const v = await AsyncStorage.getItem(TASK_VERSION_KEY);
-    if (v === String(TASK_OPTIONS_VERSION)) return;
+    if (v === String(TASK_OPTIONS_VERSION)) {
+      await resumeIfPaused();
+      return;
+    }
     await Location.stopLocationUpdatesAsync(LOCATION_TASK);
   }
   const p = await getPermissions();

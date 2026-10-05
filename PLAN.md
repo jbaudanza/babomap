@@ -160,7 +160,9 @@ type UserStatus = {
   movement-only (`distanceInterval` 50 m, no heartbeat timer). The OS's own
   stationary detection decides when nothing is reported.
   - iOS: "Always" permission, `UIBackgroundModes: ["location"]`,
-    `pausesUpdatesAutomatically: false`.
+    `pausesUpdatesAutomatically: true` so GPS powers down when stationary.
+    iOS never resumes by itself; Expo's significant-change monitoring wakes
+    the task on the next big move and the task re-issues start to resume.
   - Android: `ACCESS_BACKGROUND_LOCATION`, foreground service with a persistent
     notification (`foregroundService` option); `timeInterval` is the minimum
     spacing between fixes while moving.
