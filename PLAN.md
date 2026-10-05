@@ -156,14 +156,18 @@ type UserStatus = {
 
 ### Location pipeline
 
-- `expo-location` + `expo-task-manager` background task.
+- `expo-location` + `expo-task-manager` background task, High accuracy,
+  movement-only (`distanceInterval` 50 m, no heartbeat timer). The OS's own
+  stationary detection decides when nothing is reported.
   - iOS: "Always" permission, `UIBackgroundModes: ["location"]`,
-    `pausesUpdatesAutomatically: false`, `distanceInterval ≈ 50 m`,
-    `deferredUpdatesInterval` for batching, `showsBackgroundLocationIndicator`.
-    iOS only delivers fixes on movement — no heartbeat when stationary.
+    `pausesUpdatesAutomatically: false`.
   - Android: `ACCESS_BACKGROUND_LOCATION`, foreground service with a persistent
-    notification (`foregroundService` option), `timeInterval ≈ 60 s` which
-    gives a heartbeat even when stationary.
+    notification (`foregroundService` option); `timeInterval` is the minimum
+    spacing between fixes while moving.
+  - `deferredUpdatesDistance` must stay 0: Expo only wakes the task once both
+    deferral thresholds are met.
+  - Planned: on-demand ping (FCM data push to the Android phone) when the
+    partner opens the map, replacing any need for a heartbeat.
 - The task POSTs the fix immediately. On failure it appends to a local queue
   (expo-sqlite or AsyncStorage); the next task run or app launch flushes it.
 - Foreground: also post a fix on app open so the other person always gets a

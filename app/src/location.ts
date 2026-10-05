@@ -11,7 +11,7 @@ import { flush, sendOrQueue } from './queue';
 const SHARING_KEY = 'babomap.sharing';
 // Bump when TASK_OPTIONS change: the OS task keeps the options it was started
 // with, so reconcileOnLaunch restarts it when this differs from what's stored.
-const TASK_OPTIONS_VERSION = 2;
+const TASK_OPTIONS_VERSION = 3;
 const TASK_VERSION_KEY = 'babomap.taskOptionsVersion';
 
 // --- Background task -------------------------------------------------------
@@ -42,16 +42,22 @@ TaskManager.defineTask<TaskData>(LOCATION_TASK, async ({ data, error }) => {
 // --- Options ---------------------------------------------------------------
 
 const TASK_OPTIONS: Location.LocationTaskOptions = {
-  accuracy: Location.Accuracy.Balanced,
-  // Android: a fix every minute even when stationary (the heartbeat). Any
-  // distanceInterval > 0 becomes a min-displacement filter on the fused
-  // provider and silences a stationary phone entirely.
-  // iOS: distanceFilter; CoreLocation sends nothing while stationary, by design.
-  distanceInterval: Platform.OS === 'android' ? 0 : 50,
+  // GPS-grade fixes. Android's Balanced priority never uses GPS itself, so
+  // fixes were 20-100 m unless another app had GPS running; iOS's
+  // hundred-metre target is a soft budget that depends on what else is
+  // running. Both are movement-only (below), so GPS sleeps when the phone
+  // does. iOS: with pausesUpdatesAutomatically off, GPS stays on whenever
+  // updates are active -- watch battery.
+  accuracy: Location.Accuracy.High,
+  // Movement-only: a fix after moving this far, nothing while stationary.
+  // There is deliberately no heartbeat; "is the task alive?" is answered by
+  // the on-demand ping instead. (Android: timeInterval is the minimum
+  // spacing between fixes while moving, not a timer that fires when still.)
+  distanceInterval: 50,
   timeInterval: 60_000,
   // Expo buffers fixes while the app is backgrounded and only wakes the JS
-  // task once BOTH thresholds are met. A distance threshold therefore holds
-  // a stationary phone's fixes forever, so it must be 0.
+  // task once BOTH thresholds are met, so the distance threshold must be 0
+  // or fixes sit in the buffer until the phone has travelled that far.
   deferredUpdatesInterval: 60_000,
   deferredUpdatesDistance: 0,
   // iOS: keep listening when stationary; otherwise CoreLocation sleeps and
